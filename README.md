@@ -48,6 +48,7 @@ stream-radio play https://chzzk.naver.com/live/<channelId>
 ```
 
 재생 중 페이지가 호출하는 CHZZK `live-status` 응답을 감지하면 방제를 출력합니다.
+방송 정보를 받기 전까지 오디오는 음소거 상태로 대기하고, `status`가 `CLOSE`면 자동 종료합니다.
 
 종료:
 

@@ -140,10 +140,6 @@ async function start() {
     if (debug) await logCookieSummary(win, "before-login");
   }
 
-  if (command === "play") {
-    attachLiveStatusScanner(win, debug);
-  }
-
   if (cli.flags.has("devtools")) {
     win.webContents.openDevTools({ mode: "detach" });
   }
@@ -157,7 +153,10 @@ async function start() {
     console.log("[stream-radio] Use --stay-open to keep the login window open.");
   } else {
     console.log(`[stream-radio] Loading: ${url}`);
+    console.log("[stream-radio] Waiting for live status before playback...");
     console.log("[stream-radio] Press Ctrl+C to stop.");
+
+    win.webContents.setAudioMuted(true);
 
     let playbackStarted = false;
     const startPlayback = (reason) => {
@@ -171,8 +170,15 @@ async function start() {
       console.log("[stream-radio] Playing.");
     };
 
-    win.webContents.once("dom-ready", () => startPlayback("dom-ready"));
-    setTimeout(() => startPlayback("timeout"), 5000);
+    const scannerAttached = attachLiveStatusScanner(win, debug, (content) => {
+      if (content.status === "CLOSE") return;
+      startPlayback(`live-status:${content.status || "UNKNOWN"}`);
+    });
+
+    if (!scannerAttached) {
+      console.log("[stream-radio] Live-status scanner unavailable. Starting playback after page is ready.");
+      win.webContents.once("dom-ready", () => startPlayback("dom-ready-fallback"));
+    }
   }
 
   win.loadURL(url).catch((error) => {
@@ -376,7 +382,7 @@ function isChzzkUrl(currentUrl) {
   }
 }
 
-function attachLiveStatusScanner(targetWindow, shouldDebug) {
+function attachLiveStatusScanner(targetWindow, shouldDebug, onLiveStatus) {
   const debuggerClient = targetWindow.webContents.debugger;
   const liveStatusRequests = new Map();
   let lastPrintedKey;
@@ -390,7 +396,7 @@ function attachLiveStatusScanner(targetWindow, shouldDebug) {
     if (shouldDebug) {
       console.error(`[stream-radio] live-status scanner attach failed: ${error.message}`);
     }
-    return;
+    return false;
   }
 
   debuggerClient.sendCommand("Network.enable").catch((error) => {
@@ -429,7 +435,10 @@ function attachLiveStatusScanner(targetWindow, shouldDebug) {
           closeDetected = true;
           console.log("[stream-radio] Live is closed. Exiting.");
           setTimeout(() => shutdown(0), 1000);
+          return;
         }
+
+        onLiveStatus?.(content);
       });
       return;
     }
@@ -438,6 +447,8 @@ function attachLiveStatusScanner(targetWindow, shouldDebug) {
       liveStatusRequests.delete(params?.requestId);
     }
   });
+
+  return true;
 }
 
 async function readLiveStatusBody(debuggerClient, requestId, request, shouldDebug, onContent) {
