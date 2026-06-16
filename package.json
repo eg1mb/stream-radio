@@ -1,0 +1,21 @@
+{
+  "name": "stream-radio",
+  "version": "0.1.0",
+  "description": "Terminal-controlled streaming audio player using a hidden Electron browser window.",
+  "type": "module",
+  "bin": {
+    "stream-radio": "./bin/stream-radio.js"
+  },
+  "scripts": {
+    "start": "node ./bin/stream-radio.js",
+    "login": "node ./bin/stream-radio.js login",
+    "play": "node ./bin/stream-radio.js play"
+  },
+  "dependencies": {
+    "electron": "^42.4.0"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "license": "MIT"
+}
