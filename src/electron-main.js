@@ -428,10 +428,12 @@ function attachLiveStatusScanner(targetWindow, shouldDebug, onLiveStatus) {
 
       liveStatusRequests.delete(params.requestId);
       void readLiveStatusBody(debuggerClient, params.requestId, request, shouldDebug, (content) => {
+        if (closeDetected) return;
+
         const printed = printLiveStatus(content, request.channelId, lastPrintedKey);
         if (printed) lastPrintedKey = printed;
 
-        if (!closeDetected && content.status === "CLOSE") {
+        if (content.status === "CLOSE") {
           closeDetected = true;
           console.log("[stream-radio] Live is closed. Exiting.");
           setTimeout(() => shutdown(0), 1000);
