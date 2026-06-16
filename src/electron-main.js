@@ -380,6 +380,7 @@ function attachLiveStatusScanner(targetWindow, shouldDebug) {
   const debuggerClient = targetWindow.webContents.debugger;
   const liveStatusRequests = new Map();
   let lastPrintedKey;
+  let closeDetected = false;
 
   try {
     if (!debuggerClient.isAttached()) {
@@ -423,6 +424,12 @@ function attachLiveStatusScanner(targetWindow, shouldDebug) {
       void readLiveStatusBody(debuggerClient, params.requestId, request, shouldDebug, (content) => {
         const printed = printLiveStatus(content, request.channelId, lastPrintedKey);
         if (printed) lastPrintedKey = printed;
+
+        if (!closeDetected && content.status === "CLOSE") {
+          closeDetected = true;
+          console.log("[stream-radio] Live is closed. Exiting.");
+          setTimeout(() => shutdown(0), 1000);
+        }
       });
       return;
     }
